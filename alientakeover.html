@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Alien Takeover</title>
+    <style>
+        canvas {
+            background-color: #333;
+            display: block;
+            margin: 0 auto;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas" width="800" height="400"></canvas>
+    <script>
+        // Set up canvas
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Player variables
+        const player = {
+            x: 50,
+            y: 300,
+            width: 50,
+            height: 50,
+            speed: 5,
+            jumping: false,
+            jumpPower: 15,
+            dy: 0
+            player.punching = false;
+        };
+// Alien variables
+const aliens = [];
+const alienSize = 40;
+
+// Spawn new aliens at intervals
+function spawnAlien() {
+    aliens.push({
+        x: canvas.width,
+        y: 300,
+        width: alienSize,
+        height: alienSize,
+        speed: 2
+    });
+}
+
+// Move aliens towards the player
+function updateAliens() {
+    for (let i = 0; i < aliens.length; i++) {
+        const alien = aliens[i];
+        
+        // Move alien leftward toward player
+        alien.x -= alien.speed;
+
+        // Check collision with player
+        if (
+            player.x < alien.x + alien.width &&
+            player.x + player.width > alien.x &&
+            player.y < alien.y + alien.height &&
+            player.y + player.height > alien.y
+        ) {
+            // Collision detected - reset player position or handle damage
+            console.log("Alien hit the player!");
+            player.x = 50; // Send player back to start position for now
+        }
+
+        // Remove alien if off the canvas
+        if (alien.x + alien.width < 0) {
+            aliens.splice(i, 1);
+            i--;
+        }
+    }
+}
+
+// Draw aliens
+function drawAliens() {
+    ctx.fillStyle = 'red';
+    for (const alien of aliens) {
+        ctx.fillRect(alien.x, alien.y, alien.width, alien.height);
+    }
+}
+
+// Call spawnAlien() every few seconds
+setInterval(spawnAlien, 2000);
+
+
+        // Key Presses
+        const keys = {};
+
+        window.addEventListener('keydown', (e) => {
+            keys[e.code] = true;
+        });
+
+        window.addEventListener('keyup', (e) => {
+            keys[e.code] = false;
+        });
+
+        // Game loop
+        function gameLoop() {
+            // Clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Player controls
+            if (keys['ArrowRight']) player.x += player.speed;
+            if (keys['ArrowLeft']) player.x -= player.speed;
+            if (keys['Space'] && !player.jumping) {
+                player.jumping = true;
+                player.dy = -player.jumpPower;
+            }
+
+            // Apply gravity
+            if (player.jumping) {
+                player.dy += 1; // Gravity
+                player.y += player.dy;
+                if (player.y >= 300) { // Ground level
+                    player.y = 300;
+                    player.jumping = false;
+                    player.dy = 0;
+                }
+            }
+
+            // Draw player
+            ctx.fillStyle = 'lime';
+            ctx.fillRect(player.x, player.y, player.width, player.height);
+
+            requestAnimationFrame(gameLoop);
+updateAliens(); // Update alien positions and check for collisions
+drawAliens();   // Draw aliens
+        }
+
+        gameLoop(); // Start the game loop
+    </script>
+</body>
+</html>

@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pikmin Adventure Game</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #e0f7fa;
+        }
+
+        canvas {
+            border: 2px solid #000;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+
+        canvas.width = 800;
+        canvas.height = 600;
+
+        const playerSize = 30;
+        const pikminSize = 10;
+        const pikminFollowDistance = 40;
+
+        // Player objects with initial positions and controls
+        const player1 = { x: 100, y: 100, color: "red", keys: { up: "w", left: "a", down: "s", right: "d", throw: "m" }, pikmin: [], direction: { x: 0, y: -1 } };
+        const player2 = { x: 700, y: 500, color: "blue", keys: { up: "ArrowUp", left: "ArrowLeft", down: "ArrowDown", right: "ArrowRight", throw: " " }, pikmin: [], direction: { x: 0, y: -1 } };
+
+        const gate = { x: 370, y: 250, width: 60, height: 20, open: false };
+        const switch1 = { x: 200, y: 300, radius: 15, activated: false };
+        const switch2 = { x: 600, y: 300, radius: 15, activated: false };
+
+        // Pikmin Initialization
+        function addPikminToPlayer(player, count, color) {
+            for (let i = 0; i < count; i++) {
+                player.pikmin.push({ x: player.x, y: player.y, color: color, thrown: false, velocity: { x: 0, y: 0 } });
+            }
+        }
+
+        addPikminToPlayer(player1, 5, "orange"); // Player 1's Pikmin
+        addPikminToPlayer(player2, 5, "green");  // Player 2's Pikmin
+
+        function drawPlayer(player) {
+            ctx.fillStyle = player.color;
+            ctx.fillRect(player.x, player.y, playerSize, playerSize);
+        }
+
+        function drawPikmin(pikmin) {
+            ctx.fillStyle = pikmin.color;
+            ctx.beginPath();
+            ctx.arc(pikmin.x, pikmin.y, pikminSize / 2, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        function drawGate() {
+            ctx.fillStyle = gate.open ? "green" : "brown";
+            ctx.fillRect(gate.x, gate.y, gate.width, gate.height);
+        }
+
+        function drawSwitch(switchObj) {
+            ctx.fillStyle = switchObj.activated ? "yellow" : "gray";
+            ctx.beginPath();
+            ctx.arc(switchObj.x, switchObj.y, switchObj.radius, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        function checkCollision(player, switchObj) {
+            const distX = player.x + playerSize / 2 - switchObj.x;
+            const distY = player.y + playerSize / 2 - switchObj.y;
+            return Math.sqrt(distX * distX + distY * distY) < playerSize / 2 + switchObj.radius;
+        }
+
+        function updatePikmin(player) {
+            player.pikmin.forEach((pikmin, index) => {
+                if (pikmin.thrown) {
+                    // Move thrown Pikmin
+                    pikmin.x += pikmin.velocity.x;
+                    pikmin.y += pikmin.velocity.y;
+
+                    // Stop Pikmin after a certain distance
+                    pikmin.velocity.x *= 0.95;
+                    pikmin.velocity.y *= 0.95;
+                    if (Math.abs(pikmin.velocity.x) < 0.1 && Math.abs(pikmin.velocity.y) < 0.1) {
+                        pikmin.thrown = false;
+                    }
+                } else {
+                    // Regular following mechanic
+                    const targetX = index === 0 ? player.x : player.pikmin[index - 1].x;
+                    const targetY = index === 0 ? player.y : player.pikmin[index - 1].y;
+
+                    const dx = targetX - pikmin.x;
+                    const dy = targetY - pikmin.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+
+                    if (distance > pikminFollowDistance) {
+                        pikmin.x += (dx / distance) * 2;
+                        pikmin.y += (dy / distance) * 2;
+                    }
+                }
+            });
+        }
+
+        function throwPikmin(player) {
+            const pikminToThrow = player.pikmin.find(p => !p.thrown);
+            if (pikminToThrow) {
+                pikminToThrow.thrown = true;
+                pikminToThrow.velocity.x = player.direction.x * 5;
+                pikminToThrow.velocity.y = player.direction.y * 5;
+            }
+        }
+
+        function update() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw players, gate, and switches
+            drawPlayer(player1);
+            drawPlayer(player2);
+            drawGate();
+            drawSwitch(switch1);
+            drawSwitch(switch2);
+
+            // Draw Pikmin
+            player1.pikmin.forEach(drawPikmin);
+            player2.pikmin.forEach(drawPikmin);
+
+            // Update Pikmin positions to follow their player or move if thrown
+            updatePikmin(player1);
+            updatePikmin(player2);
+
+            // Check if players activate switches
+            if (checkCollision(player1, switch1)) switch1.activated = true;
+            if (checkCollision(player2, switch2)) switch2.activated = true;
+
+            // Open gate if both switches are activated
+            if (switch1.activated && switch2.activated) gate.open = true;
+        }
+
+        function movePlayer(player, key) {
+            const speed = 5;
+            if (key === player.keys.up) {
+                player.y -= speed;
+                player.direction = { x: 0, y: -1 };
+            }
+            if (key === player.keys.down) {
+                player.y += speed;
+                player.direction = { x: 0, y: 1 };
+            }
+            if (key === player.keys.left) {
+                player.x -= speed;
+                player.direction = { x: -1, y: 0 };
+            }
+            if (key === player.keys.right) {
+                player.x += speed;
+                player.direction = { x: 1, y: 0 };
+            }
+            if (key === player.keys.throw) {
+                throwPikmin(player);
+            }
+        }
+
+        // Event listener for player movement and throwing
+        window.addEventListener("keydown", (e) => {
+            movePlayer(player1, e.key);
+            movePlayer(player2, e.key);
+        });
+
+        // Main game loop
+        function gameLoop() {
+            update();
+            requestAnimationFrame(gameLoop);
+        }
+
+        gameLoop();
+    </script>
+</body>
+</html>

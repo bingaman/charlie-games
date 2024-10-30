@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Alien Takeover</title>
+    <style>
+        canvas {
+            background-color: #333;
+            display: block;
+            margin: 0 auto;
+        }
+    </style>
+</head>
+<body>
+<canvas id="gameCanvas" width="800" height="400"></canvas>
+<script>
+// Set up canvas
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+// Player variables (Player 1 is controlled by user, others are AI)
+const players = [
+    { x: 50, y: 300, width: 30, height: 30, speed: 5, punching: false, punchTime: 0, color: 'lime' },
+    { x: 100, y: 300, width: 30, height: 30, speed: 4, punching: false, punchTime: 0, color: 'blue' },
+    { x: 150, y: 300, width: 30, height: 30, speed: 4, punching: false, punchTime: 0, color: 'yellow' },
+    { x: 200, y: 300, width: 30, height: 30, speed: 4, punching: false, punchTime: 0, color: 'pink' }
+];
+
+// Aliens and guard
+const aliens = [];
+const treasure = { x: canvas.width - 100, y: 300, width: 20, height: 20, collected: false };
+const guard = { x: canvas.width - 150, y: 300, width: 30, height: 30, speed: 2, health: 5, direction: 1, active: true };
+let explosionActive = false;
+let explosionTime = 0;
+
+// Key Presses
+const keys = {};
+window.addEventListener('keydown', (e) => {
+    keys[e.code] = true;
+    if (e.code === 'KeyZ') {
+        players[0].punching = true;
+        players[0].punchTime = 10;
+    }
+    if (e.code === 'KeyX') {
+        explosionActive = true;
+        explosionTime = 20;
+        aliens.length = 0;
+        console.log("Player 1 Explosion activated!");
+    }
+});
+window.addEventListener('keyup', (e) => {
+    keys[e.code] = false;
+    if (e.code === 'KeyZ') players[0].punching = false;
+});
+
+// Spawn aliens with smaller size
+function spawnAlien() {
+    const isBig = Math.random() < 0.3;
+    const alien = {
+        x: canvas.width,
+        y: 300,
+        width: isBig ? 40 : 20,
+        height: isBig ? 40 : 20,
+        speed: isBig ? 1 : 2,
+        health: isBig ? 3 : 1
+    };
+    aliens.push(alien);
+}
+
+// Update aliens and interactions
+function updateAliens(player) {
+    for (let i = 0; i < aliens.length; i++) {
+        const alien = aliens[i];
+        alien.x -= alien.speed;
+
+        // Alien collides with player
+        if (
+            player.x < alien.x + alien.width &&
+            player.x + player.width > alien.x &&
+            player.y < alien.y + alien.height &&
+            player.y + player.height > alien.y
+        ) {
+            console.log("Alien hit the player!");
+            player.x = 50;
+        }
+
+        // Player attacks alien
+        if (player.punching && Math.abs(alien.x - player.x) < player.width + 5) {
+            alien.health -= 1;
+            if (alien.health <= 0) {
+                aliens.splice(i, 1);
+                i--;
+                console.log("Alien defeated!");
+            }
+        }
+
+        // Remove aliens that go off-screen
+        if (alien.x + alien.width < 0) {
+            aliens.splice(i, 1);
+            i--;
+        }
+    }
+}
+
+// AI movement for Players 2, 3, and 4
+function updateAIPlayers() {
+    for (let i = 1; i < players.length; i++) {
+        const aiPlayer = players[i];
+
+        // Move AI players towards Player 1 if too far
+        if (Math.abs(players[0].x - aiPlayer.x) > 40) {
+            if (players[0].x > aiPlayer.x) aiPlayer.x += aiPlayer.speed;
+            else aiPlayer.x -= aiPlayer.speed;
+        }
+
+        // Attack nearby aliens
+        for (const alien of aliens) {
+            if (Math.abs(alien.x - aiPlayer.x) < aiPlayer.width + 5) {
+                aiPlayer.punching = true;
+                aiPlayer.punchTime = 10;
+                alien.health -= 1;
+                if (alien.health <= 0) {
+                    aliens.splice(aliens.indexOf(alien), 1);
+                    console.log(`AI Player ${i + 1} defeated an alien!`);
+                }
+            }
+        }
+
+        // Stop punching after punch duration
+        if (aiPlayer.punchTime > 0) aiPlayer.punchTime--;
+        else aiPlayer.punching = false;
+    }
+}
+
+// Draw and update players
+function drawPlayer(player) {
+    ctx.fillStyle = player.color;
+    ctx.fillRect(player.x, player.y, player.width, player.height);
+    if (player.punchTime > 0) {
+        ctx.fillStyle = 'orange';
+        ctx.fillRect(player.x + player.width, player.y + player.height / 3, 10, 10);
+        player.punchTime -= 1;
+    }
+}
+
+// Update treasure collection
+function updateTreasure(player) {
+    if (
+        !treasure.collected &&
+        player.x < treasure.x + treasure.width &&
+        player.x + player.width > treasure.x &&
+        player.y < treasure.y + treasure.height &&
+        player.y + player.height > treasure.y
+    ) {
+        treasure.collected = true;
+        console.log("Treasure collected!");
+
+        setTimeout(() => {
+            treasure.x = Math.random() * (canvas.width - 100) + 50;
+            treasure.collected = false;
+            guard.x = treasure.x + 30;
+            guard.health = 5;
+            guard.active = true;
+        }, 2000);
+    }
+}
+
+// Draw treasure chest
+function drawTreasure() {
+    if (!treasure.collected) {
+        ctx.fillStyle = 'gold';
+        ctx.fillRect(treasure.x, treasure.y, treasure.width, treasure.height);
+    }
+}
+
+// Draw explosion effect
+function drawExplosion() {
+    if (explosionActive && explosionTime > 0) {
+        ctx.fillStyle = `rgba(255, 100, 0, ${explosionTime / 20})`;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        explosionTime -= 1;
+        if (explosionTime === 0) explosionActive = false;
+    }
+}
+
+// Draw guard
+function drawGuard() {
+    if (guard.active) {
+        ctx.fillStyle = 'purple';
+        ctx.fillRect(guard.x, guard.y, guard.width, guard.height);
+    }
+}
+
+// Update guard
+function updateGuard(player) {
+    if (guard.active) {
+        guard.x += guard.speed * guard.direction;
+        if (guard.x > treasure.x + 30 || guard.x < treasure.x - 30) guard.direction *= -1;
+
+        // Guard hits player
+        if (
+            player.x < guard.x + guard.width &&
+            player.x + player.width > guard.x &&
+            player.y < guard.y + guard.height &&
+            player.y + player.height > guard.y
+        ) {
+            console.log("Guard hit the player!");
+            player.x = 50;
+        }
+
+        // Player attacks guard
+        if (player.punching && Math.abs(guard.x - player.x) < player.width + 5) {
+            guard.health -= 1;
+            console.log("Guard hit! Remaining health:", guard.health);
+            if (guard.health <= 0) {
+                guard.active = false;
+                console.log("Guard defeated!");
+            }
+        }
+    }
+}
+
+// Game loop
+function gameLoop() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Draw and update entities
+    players.forEach(drawPlayer);
+    drawTreasure();
+    drawGuard();
+    drawExplosion();
+    updateAIPlayers();
+    aliens.forEach((alien) => {
+        ctx.fillStyle = 'green';
+        ctx.fillRect(alien.x, alien.y, alien.width, alien.height);
+    });
+
+    // Player 1 movement
+    if (keys['ArrowUp'] && players[0].y > 0) players[0].y -= players[0].speed;
+    if (keys['ArrowDown'] && players[0].y < canvas.height - players[0].height) players[0].y += players[0].speed;
+    if (keys['ArrowLeft'] && players[0].x > 0) players[0].x -= players[0].speed;
+    if (keys['ArrowRight'] && players[0].x < canvas.width - players[0].width) players[0].x += players[0].speed;
+
+    // Update entities
+    updateTreasure(players[0]);
+    updateGuard(players[0]);
+    updateAliens(players[0]);
+
+    requestAnimationFrame(gameLoop);
+}
+
+// Start game loop
+setInterval(spawnAlien, 2000);
+gameLoop();
+</script>
+
+</body>
+</html>

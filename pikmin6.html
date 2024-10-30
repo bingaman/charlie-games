@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pikmin Gift Shop</title>
+    <style>
+        canvas { border: 1px solid black; }
+        #shop { margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+    <div id="shop">
+        <button id="wearHat">Wear Hat</button>
+        <button id="wearCape">Wear Cape</button>
+    </div>
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Player position
+        let player = { x: 100, y: 400 };
+
+        // Pikmin array
+        let pikminList = [{ x: 120, y: 420, color: 'green', accessory: null }]; // Start with one Pikmin
+
+        // Function to draw player
+        function drawPlayer() {
+            ctx.fillStyle = 'blue'; // Color for the player
+            ctx.beginPath();
+            ctx.arc(player.x, player.y, 20, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // Function to draw Pikmin
+        function drawPikmin(pikmin) {
+            ctx.fillStyle = pikmin.color;
+            ctx.beginPath();
+            ctx.arc(pikmin.x, pikmin.y, 15, 0, Math.PI * 2);
+            ctx.fill();
+            if (pikmin.accessory) {
+                ctx.fillStyle = 'red'; // Color for accessories
+                ctx.beginPath();
+                ctx.arc(pikmin.x, pikmin.y - 25, 8, 0, Math.PI * 2); // Simple accessory above head
+                ctx.fill();
+            }
+        }
+
+        // Function to clear the canvas
+        function clearCanvas() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+
+        // Function to update Pikmin position to follow the player
+        function updatePikmin() {
+            pikminList.forEach(pikmin => {
+                // Calculate direction vector
+                const dx = player.x - pikmin.x;
+                const dy = player.y - pikmin.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+
+                // Move Pikmin towards player
+                if (distance > 5) { // Only move if not too close
+                    pikmin.x += dx * 0.05; // Adjust speed by modifying this value
+                    pikmin.y += dy * 0.05;
+                }
+            });
+        }
+
+        // Main update loop
+        function update() {
+            clearCanvas();
+            drawPlayer();
+            pikminList.forEach(drawPikmin);
+            updatePikmin();
+            requestAnimationFrame(update);
+        }
+
+        // Move player with arrow keys
+        document.addEventListener('keydown', (event) => {
+            switch (event.key) {
+                case 'ArrowUp':
+                    player.y -= 5; // Move up
+                    break;
+                case 'ArrowDown':
+                    player.y += 5; // Move down
+                    break;
+                case 'ArrowLeft':
+                    player.x -= 5; // Move left
+                    break;
+                case 'ArrowRight':
+                    player.x += 5; // Move right
+                    break;
+            }
+        });
+
+        // Wear Hat
+        document.getElementById('wearHat').addEventListener('click', () => {
+            pikminList.forEach(pikmin => {
+                pikmin.accessory = 'hat';
+            });
+        });
+
+        // Wear Cape
+        document.getElementById('wearCape').addEventListener('click', () => {
+            pikminList.forEach(pikmin => {
+                pikmin.accessory = 'cape';
+            });
+        });
+
+        // Initial Draw
+        update(); // Start the update loop
+    </script>
+</body>
+</html>

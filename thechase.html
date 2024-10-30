@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chase Game</title>
+  <style>
+    body { display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background-color: #f0f0f0; }
+    canvas { background-color: #fff; border: 1px solid #000; }
+  </style>
+</head>
+<body>
+  <canvas id="gameCanvas" width="800" height="600"></canvas>
+  <script>
+    // Canvas setup
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+
+    // Player, AI, and power-up properties
+    let player1 = { x: 50, y: 50, speed: 5, color: "blue", coins: 10 };
+    let player2 = { x: 750, y: 50, speed: 5, color: "green", coins: 10 };
+    let aiPlayer = { x: 400, y: 300, speed: 2, color: "red" };
+    let invisibilityPowerUp = { x: Math.random() * canvas.width, y: Math.random() * canvas.height, active: true };
+    let player1HasPowerUp = false;
+    let player1Invisible = false;
+    let invisibilityTimer = 0;
+
+    // Key controls
+    const keys = {};
+    window.addEventListener("keydown", e => keys[e.key] = true);
+    window.addEventListener("keyup", e => keys[e.key] = false);
+
+    // Activate invisibility with space bar if power-up is collected
+    window.addEventListener('keydown', e => {
+      if (e.key === ' ' && player1HasPowerUp && !player1Invisible) {
+        player1Invisible = true;
+        invisibilityTimer = 300; // Lasts for 5 seconds (300 frames)
+        player1HasPowerUp = false; // Power-up is now used
+        console.log("Player 1 activated invisibility!");
+      }
+    });
+
+    // Game update logic
+    function update() {
+      // Player 1 movement (WASD keys)
+      if (keys['w']) player1.y -= player1.speed;
+      if (keys['s']) player1.y += player1.speed;
+      if (keys['a']) player1.x -= player1.speed;
+      if (keys['d']) player1.x += player1.speed;
+
+      // Player 2 movement (Arrow keys)
+      if (keys['ArrowUp']) player2.y -= player2.speed;
+      if (keys['ArrowDown']) player2.y += player2.speed;
+      if (keys['ArrowLeft']) player2.x -= player2.speed;
+      if (keys['ArrowRight']) player2.x += player2.speed;
+
+      // AI random movement
+      aiPlayer.x += (Math.random() > 0.5 ? -1 : 1) * aiPlayer.speed;
+      aiPlayer.y += (Math.random() > 0.5 ? -1 : 1) * aiPlayer.speed;
+
+      // Check if Player 1 collects the power-up
+      if (invisibilityPowerUp.active && distance(player1, invisibilityPowerUp) < 20) {
+        player1HasPowerUp = true;
+        invisibilityPowerUp.active = false; // Power-up collected
+        console.log("Player 1 collected the invisibility power-up!");
+      }
+
+      // Countdown invisibility timer
+      if (player1Invisible) {
+        invisibilityTimer--;
+        if (invisibilityTimer <= 0) {
+          player1Invisible = false;
+          console.log("Player 1 is visible again!");
+        }
+      }
+
+      // AI steals coins from players if close enough and visible
+      if (!player1Invisible && distance(player1, aiPlayer) < 30 && player1.coins > 0) {
+        player1.coins -= 1;
+        console.log("AI stole a coin from Player 1!");
+      }
+      if (distance(player2, aiPlayer) < 30 && player2.coins > 0) {
+        player2.coins -= 1;
+        console.log("AI stole a coin from Player 2!");
+      }
+
+      // Keep all characters within canvas bounds
+      [player1, player2, aiPlayer].forEach(character => {
+        character.x = Math.max(0, Math.min(canvas.width, character.x));
+        character.y = Math.max(0, Math.min(canvas.height, character.y));
+      });
+    }
+
+    // Function to calculate distance between two characters
+    function distance(char1, char2) {
+      return Math.sqrt((char1.x - char2.x) ** 2 + (char1.y - char2.y) ** 2);
+    }
+
+    // Draw everything on the canvas
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Draw players, AI, and power-up if active
+      drawCircle(player1, player1Invisible ? "lightblue" : player1.color);
+      drawCircle(player2, player2.color);
+      drawCircle(aiPlayer, aiPlayer.color);
+      
+      // Draw invisibility power-up if available
+      if (invisibilityPowerUp.active) {
+        ctx.fillStyle = 'purple';
+        ctx.beginPath();
+        ctx.arc(invisibilityPowerUp.x, invisibilityPowerUp.y, 10, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Display coin counts and invisibility status
+      ctx.fillStyle = "black";
+      ctx.font = "16px Arial";
+      ctx.fillText(`Player 1 Coins: ${player1.coins}`, 10, 20);
+      ctx.fillText(`Player 2 Coins: ${player2.coins}`, 10, 40);
+      ctx.fillText(player1Invisible ? "Player 1 is invisible!" : "Player 1 is visible", 10, 60);
+    }
+
+    // Helper function to draw characters
+    function drawCircle(character, color) {
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.arc(character.x, character.y, 15, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Main game loop
+    function gameLoop() {
+      update();
+      draw();
+      requestAnimationFrame(gameLoop);
+    }
+    gameLoop(); // Start the game loop
+  </script>
+</body>
+</html>
